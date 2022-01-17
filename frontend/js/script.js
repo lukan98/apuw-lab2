@@ -57,7 +57,7 @@ function ajax(type, path, data, timeout, func, timeout_func){   //ajax XHR wrapp
 		};
 	}
 
-	var fin = new Object();   //create new object (for JSON)
+	var fin = {};   //create new object (for JSON)
 	fin.nick = nickname;   //save nickname
 	fin.stranger = chatwith;   //save stranger nickname
 	var json = JSON.stringify(fin);   //create JSON
@@ -89,7 +89,7 @@ function send_msg(){   //for sending new message via ajax and displaying in mess
 		send_box.placeholder = "Minimum length is 1 character!";
 	}else{
 		send_box.placeholder = "";   //remove placeholder from input message text box
-
+		console.log(msg)
 		ajax("POST", "submit_msg", msg, -1, nothing, nothing);   //send new message to server without timeout
 
 		var chat_box = document.getElementById("chat-box");   //get index to chat-box element
