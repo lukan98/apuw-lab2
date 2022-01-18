@@ -1,8 +1,5 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
-import threading
-from optparse import OptionParser
-from subprocess import call
 import os
 import json
 import time
