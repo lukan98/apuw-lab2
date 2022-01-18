@@ -112,7 +112,6 @@ function check_msg() {   //for calling ajax and setting up new interval
 				ajax("GET", "get_msg", "", -1, new_msg, check_msg)
 			},
 			1000)
-
 	}
 	get_msg_last_time = Date.now();
 	//setTimeout(check_msg, time);   //set timeout to call new function (call after timeout)
@@ -125,7 +124,6 @@ function check_msg() {   //for calling ajax and setting up new interval
 set_user();
 set_stranger();
 
-check_msg();
-
+setTimeout(check_msg, 10000)
 // setInterval(renew_check_msg_cycle, 5000);   //check for renewing ajax connection every 5 seconds
 //----------startup----------
