@@ -11,23 +11,17 @@ mimetypes = {
     'html': 'text/html',
     'css': 'text/css',
     'js': 'application/javascript',
-    'py': 'text/plain',
-    'sh': 'text/plain',
-    'c': 'text/plain',
-    'cpp': 'text/plain',
-    'h': 'text/plain',
     '': 'text/plain',
-    'png': 'image/png',
-    'jpg': 'image/jpg',
-    'jpeg': 'image/jpeg',
-    'gif': 'image/gif',
-    'ico': 'image/ico',
 }
 
 PROGRAM_DIR = os.path.dirname(os.path.realpath(__file__))
 
-msgs = []  # variable for saving received messages
+messages = {}
 timeout = 15000  # timeout - same as in script.js
+
+
+SENDER_KEY = "user"
+RECIPIENT_KEY = "stranger"
 
 
 def milliseconds() -> int:
@@ -58,38 +52,29 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
             filename = os.path.basename(request_path)
             self.send_file("frontend/js/" + filename)
 
-        elif request_path.startswith("/img/") \
-                and (request_path.endswith(".png")
-                     or request_path.endswith(".jpg")
-                     or request_path.endswith(".jpeg")
-                     or request_path.endswith(".gif")
-                     or request_path.endswith(".ico")):  # IMG
-            filename = os.path.basename(request_path)
-            self.send_file("frontend/img/" + filename)
-
         elif request_path == "/get_msg":  # for sending messages to client
             request_info = self.headers.get('info')  # get json data from header saved under info
             print("Request info JSON: " + request_info)
 
-            info = parse_info(request_info)  # parse nickname and stranger nickname from JSON
-            nick = info[0]
-            stranger = info[1]
+            user, stranger = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
 
             start = milliseconds()  # actual millis (unix time)
             leave = 0
 
-            # timeout is without 100ms because we want to avoid getting error: [Errno 32] Broken pipe
+            # long polling loop
             while leave != 1 and milliseconds() - start < timeout - 100:
 
-                for a in msgs:
-                    if a[0] == stranger and a[1] == nick:
+                for sender, recipient in messages:
+                    if sender == stranger and user == recipient:
+                        message = messages[(sender, recipient)]
+
                         self.send_response(200)
                         self.send_header("Content-type", "text/html")
                         self.end_headers()
-                        self.wfile.write(a[2])
+                        self.wfile.write(message)
                         self.wfile.write(str.encode('\n'))
 
-                        msgs.remove(a)  # remove this msg from list because we found correct client
+                        del messages[(sender, recipient)]  # remove this msg from list because we found correct client
 
                         leave = 1  # leave while loop
                         print("data sent, leaving")
@@ -114,17 +99,15 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
 
         if request_path == "/submit_msg":  # new message from client
             content_length = self.headers.get('content-length')  # get length of request body
-            length = int(content_length[0]) if content_length else 0
-
-            request_body = self.rfile.read(length)  # get request body
+            request_body = self.rfile.read(int(content_length))  # get request body
             request_info = self.headers.get('info')  # get info JSON from header
 
             print("Request info JSON: " + request_info)
             print("Request body: " + request_body.decode("utf-8"))
 
-            info = parse_info(request_info)  # parse nickname and stranger nickname from JSON
+            sender, recipient = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
 
-            msgs.append((info[0], info[1], request_body))  # add this msg to msgs list
+            messages[(sender, recipient)] = request_body
 
             self.send_response(200)
             self.send_header("Content-type", "text/html")
@@ -168,10 +151,10 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
         self.send_error(4040, 'File not found: %s' % self.path)
 
 
-def parse_info(msg):  # function for parsing nickname and stranger nickname from JSON
-    print(f'Message {msg}')
-    data = json.loads(msg)
-    return data["nick"], data["stranger"]
+def parse_message_metadata(message):  # function for parsing nickname and stranger nickname from JSON
+    print(f'Message {message}')
+    data = json.loads(message)
+    return data[SENDER_KEY], data[RECIPIENT_KEY]
 
 
 def get_mimetype(filename):  # function for getting mimetype
