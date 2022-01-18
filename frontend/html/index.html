@@ -18,6 +18,14 @@
 		<label for="user">Nickname: </label><input type="text" id="user" onfocusout="set_user()">
 		<br>
 		<label for="stranger">Chat with: </label><input type="text" id="stranger" onfocusout="set_stranger()">
+		<br>
+		<label>Connection mode: </label><br>
+		<input type="radio" id="poll" name="mode" value="POLL" onclick="set_mode()">
+		<label for="poll">Polling</label><br>
+		<input type="radio" id="long_polling" name="mode" value="LONG POLL" onclick="set_mode()" checked>
+		<label for="long_polling">Long polling</label><br>
+		<input type="radio" id="websocket" name="mode" value="WEBSOCKET" onclick="set_mode()">
+		<label for="websocket">Websocket</label>
 	</div>
 
 	<div id="fail-box"></div>

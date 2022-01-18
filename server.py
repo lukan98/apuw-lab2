@@ -22,6 +22,7 @@ timeout = 15000  # timeout - same as in script.js
 
 SENDER_KEY = "user"
 RECIPIENT_KEY = "stranger"
+MODE_KEY = "mode"
 
 
 def milliseconds() -> int:
@@ -56,7 +57,7 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
             request_info = self.headers.get('info')  # get json data from header saved under info
             print("Request info JSON: " + request_info)
 
-            user, stranger = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
+            user, stranger, polling_mode = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
 
             start = milliseconds()  # actual millis (unix time)
             leave = 0
@@ -77,14 +78,17 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
                         del messages[(sender, recipient)]  # remove this msg from list because we found correct client
 
                         leave = 1  # leave while loop
-                        print("data sent, leaving")
+                        print(f'{user}\'S {polling_mode} ENDED WITH FOUND DATA')
                         break  # leave this for loop
 
-                time.sleep(0.1)  # for lowering CPU consumption
+                if polling_mode == "POLL":
+                    print(f'{user}\'S {polling_mode} ENDED WITH NO DATA')
+                    break
+
+                time.sleep(0.2)  # for lowering CPU consumption
 
             if leave == 0:  # no data for client
-                print("leaving because timeout")
-
+                # print(f'{user}\'S {polling_mode} ENDED WITH NO DATA')
                 self.send_response(204)
                 self.send_header("Content-type", "text/plain")
                 self.end_headers()
@@ -105,7 +109,7 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
             print("Request info JSON: " + request_info)
             print("Request body: " + request_body.decode("utf-8"))
 
-            sender, recipient = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
+            sender, recipient, _ = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
 
             messages[(sender, recipient)] = request_body
 
@@ -154,7 +158,7 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
 def parse_message_metadata(message):  # function for parsing nickname and stranger nickname from JSON
     print(f'Message {message}')
     data = json.loads(message)
-    return data[SENDER_KEY], data[RECIPIENT_KEY]
+    return data[SENDER_KEY], data[RECIPIENT_KEY], data[MODE_KEY]
 
 
 def get_mimetype(filename):  # function for getting mimetype
@@ -164,16 +168,12 @@ def get_mimetype(filename):  # function for getting mimetype
             return mimetypes[ext.replace('.', '')]  # try get mimetype
         except:
             return mimetypes['']
-
     except:
         return 'text/plain'
 
 
-# used for forking requests - because /get_msg is waiting for new message,
-# and it will block other request without threading
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
-    """Handle requests in a separate thread."""
 
 
 def main():
