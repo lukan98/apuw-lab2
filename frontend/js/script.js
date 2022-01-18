@@ -107,7 +107,12 @@ function check_msg() {   //for calling ajax and setting up new interval
 	if (mode === "LONG POLL") {
 		ajax("GET", "get_msg", "", time, new_msg, check_msg);
 	} else if (mode === "POLL") {
-		ajax("GET", "get_msg", "", -1, new_msg, check_msg)
+		setTimeout(
+			function() {
+				ajax("GET", "get_msg", "", -1, new_msg, check_msg)
+			},
+			1000)
+
 	}
 	get_msg_last_time = Date.now();
 	//setTimeout(check_msg, time);   //set timeout to call new function (call after timeout)

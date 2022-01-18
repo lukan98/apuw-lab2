@@ -78,11 +78,9 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
                         del messages[(sender, recipient)]  # remove this msg from list because we found correct client
 
                         leave = 1  # leave while loop
-                        print(f'{user}\'S {polling_mode} ENDED WITH FOUND DATA')
                         break  # leave this for loop
 
                 if polling_mode == "POLL":
-                    print(f'{user}\'S {polling_mode} ENDED WITH NO DATA')
                     break
 
                 time.sleep(0.2)  # for lowering CPU consumption
@@ -107,7 +105,6 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
             request_info = self.headers.get('info')  # get info JSON from header
 
             print("Request info JSON: " + request_info)
-            print("Request body: " + request_body.decode("utf-8"))
 
             sender, recipient, _ = parse_message_metadata(request_info)  # parse nickname and stranger nickname from JSON
 
@@ -130,7 +127,6 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
 
             if filename is not None and mimetype is not None:  # check if convert file path was successful
                 full_path = PROGRAM_DIR + os.sep + filename  # get full path to file
-                print("Full file path: %s" % full_path)
                 try:
                     file = open(full_path)  # try to open file
 
@@ -141,14 +137,12 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
                     file.close()  # close file
 
                 except OSError:
-                    print("Error: Unable to open file!")
                     self.send_not_found()
 
             else:
                 self.send_not_found()
 
         except IOError:
-            print("Error: Unknown error")
             self.send_not_found()
 
     def send_not_found(self):
@@ -156,7 +150,6 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
 
 
 def parse_message_metadata(message):  # function for parsing nickname and stranger nickname from JSON
-    print(f'Message {message}')
     data = json.loads(message)
     return data[SENDER_KEY], data[RECIPIENT_KEY], data[MODE_KEY]
 
