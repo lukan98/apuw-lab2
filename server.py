@@ -3,6 +3,7 @@ import os
 import json
 import time
 import websockets
+from websockets import ConnectionClosed
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from threading import Thread
@@ -22,7 +23,7 @@ SENDER_KEY = "user"
 RECIPIENT_KEY = "stranger"
 MODE_KEY = "mode"
 MESSAGE_KEY = "message"
-
+CONNECTION_KEY = "CONNECTION"
 CONNECT = "CONNECT"
 DISCONNECT = "DISCONNECT"
 
@@ -168,39 +169,47 @@ def get_mimetype(filename):  # function for getting mimetype
 
 
 async def websocket_handler(websocket):
-    sender = await websocket.recv()
-    sender = json.loads(sender)[SENDER_KEY]
+    async for message in websocket:
+        sender, recipient, message = process_websocket_message(message)
 
-    print("SENDER " + sender)
-    websocket_connections[websocket] = sender
+        if message == CONNECT:
+            websocket_connections[sender] = websocket
+            if (sender, recipient) in messages:
+                message = messages[(sender, recipient)]
+                await send_websocket_message(sender, message, recipient)
+        elif message == DISCONNECT:
+            del websocket_connections[sender]
+        else:
+            messages[(sender, recipient)] = message
+            await send_websocket_message(sender, message, recipient)
 
-    while True:
-        message = await websocket.recv()
-        _, message_content = process_websocket_message(message)
-        print("MESSAGE CONTENT " + message_content)
-        # if message is None:
-        #     their_name = websocket_connections[websocket]
-        #     del websocket_connections[websocket]
-        #     print('Client closed connection', websocket)
-        #     for client, _ in websocket_connections.items():
-        #         await client.send(their_name + ' has left the chat')
-        #     break
 
-        # Send message to all clients
-        for client, _ in websocket_connections.items():
-            print(f'Sending to {client}')
-            await client.send(message_content)
+async def send_websocket_message(sender, message, recipient):
+    message_json = preprocess_websocket_message(sender, recipient, message)
+    if recipient in websocket_connections:
+        try:
+            await websocket_connections[recipient].send(message_json)
+            return
+        except ConnectionClosed:
+            del websocket_connections[recipient]
+            return
 
 
 def process_websocket_message(message) -> (str, str):
     data = json.loads(message)
-    print(data)
-    return data[SENDER_KEY], data[MESSAGE_KEY]
+    return data[SENDER_KEY], data[RECIPIENT_KEY], data[MESSAGE_KEY]
+
+
+def preprocess_websocket_message(sender, recipient, message_data):
+    message_json = json.dumps({SENDER_KEY: sender, RECIPIENT_KEY: recipient, MESSAGE_KEY: message_data})
+    return message_json
+
 
 
 async def run_WB_server():
+    stop = asyncio.Future()
     async with websockets.serve(websocket_handler, "localhost", 8080):
-        await asyncio.Future()
+        await stop
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -216,9 +225,9 @@ def run_HTTP_server():
         server.serve_forever()
 
     except KeyboardInterrupt:  # handle CTRL+C
-        print('^C received, shutting down server')
+        print('^C received, shutting down http server')
         server.shutdown()
-        print("Closing server")
+        print("Closing http server")
         server.server_close()
 
 

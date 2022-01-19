@@ -18,6 +18,12 @@ function set_stranger() {   //for settings up new stranger nickname
 
 function set_mode() {
 	mode = document.querySelector('input[name="mode"]:checked').value;
+
+	if (mode === "WEBSOCKET") {
+		websocket_send("CONNECT")
+	} else {
+		websocket_send("DISCONNECT")
+	}
 }
 //----------settings functions---------
 
@@ -125,10 +131,10 @@ function create_websocket() {
 	websocket = new WebSocket('ws://localhost:8080')
 
 	websocket.onmessage = function (message) {
-		console.log(message)
+		let data = JSON.parse(message.data)
         var chat_box = document.getElementById("chat-box");   //get index to chat-box element
         var chat_box_content = chat_box.innerHTML;   //get current data from chat box
-        chat_box.innerHTML = chat_box_content + "<span><b>Stranger: </b>" + message.data + "</span><br>";   //put current data + new data to chat box
+        chat_box.innerHTML = chat_box_content + "<span><b>Stranger: </b>" + data.message + "</span><br>";   //put current data + new data to chat box
         chat_box.scrollTop = chat_box.scrollHeight;
 	}
 
@@ -148,6 +154,7 @@ function create_websocket() {
 function websocket_send(message) {
     var fin = {};
 	fin.user = user
+	fin.stranger = stranger
 	fin.message = message
 	var json = JSON.stringify(fin)
 	console.log(json)
@@ -155,9 +162,9 @@ function websocket_send(message) {
 }
 
 //----------startup----------
+create_websocket();
 set_user();
 set_stranger();
-create_websocket();
 
 setTimeout(check_msg, 10000)
 //----------startup----------
