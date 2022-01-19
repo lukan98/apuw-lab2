@@ -189,10 +189,8 @@ async def send_websocket_message(sender, message, recipient):
     if recipient in websocket_connections:
         try:
             await websocket_connections[recipient].send(message_json)
-            return
         except ConnectionClosed:
             del websocket_connections[recipient]
-            return
 
 
 def process_websocket_message(message) -> (str, str):
@@ -203,7 +201,6 @@ def process_websocket_message(message) -> (str, str):
 def preprocess_websocket_message(sender, recipient, message_data):
     message_json = json.dumps({SENDER_KEY: sender, RECIPIENT_KEY: recipient, MESSAGE_KEY: message_data})
     return message_json
-
 
 
 async def run_WB_server():
