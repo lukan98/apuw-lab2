@@ -3,6 +3,7 @@ var stranger = "";   //global variable for stranger nickname (chatwith)
 var time = 15000;   //timeout in ms, same as server variable
 var get_msg_last_time = 0;   //last time (millis()) of getting new message - used for handling server fall or unexpected erros
 var mode = "LONG POLL"
+var websocket
 
 //----------settings functions---------
 function set_user() {   //for setting up new nickname
@@ -74,14 +75,17 @@ function send_msg() {   //for sending new message via ajax and displaying in mes
 		send_box.placeholder = "Minimum length is 1 character!";
 	} else {
 		send_box.placeholder = "";   //remove placeholder from input message text box
-		console.log(message)
-		ajax(
-			"POST",
-			"submit_msg",
-			message,
-			-1,
-			function () {},
-			function () {});   //send new message to server without timeout
+		if (mode === "WEBSOCKET") {
+			websocket_send(message)
+		} else {
+			ajax(
+				"POST",
+				"submit_msg",
+				message,
+				-1,
+				function () {},
+				function () {});
+		}
 
 		var chat_box = document.getElementById("chat-box");   //get index to chat-box element
 		var chat_box_content = chat_box.innerHTML;   //get current data from chat box
@@ -117,11 +121,43 @@ function check_msg() {   //for calling ajax and setting up new interval
 }
 //----------functions for sending and receiving messages (and also displaying)---------
 
+function create_websocket() {
+	websocket = new WebSocket('ws://localhost:8080')
 
+	websocket.onmessage = function (message) {
+		console.log(message)
+        var chat_box = document.getElementById("chat-box");   //get index to chat-box element
+        var chat_box_content = chat_box.innerHTML;   //get current data from chat box
+        chat_box.innerHTML = chat_box_content + "<span><b>Stranger: </b>" + message.data + "</span><br>";   //put current data + new data to chat box
+        chat_box.scrollTop = chat_box.scrollHeight;
+	}
+
+	websocket.onclose = function (e) {
+        console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
+        setTimeout(function () {
+            create_websocket();
+        }, 1000);
+	}
+
+	websocket.onerror = function (error) {
+		console.error('Socket encountered error: ', error.message, 'Closing socket');
+        websocket.close();
+	}
+}
+
+function websocket_send(message) {
+    var fin = {};
+	fin.user = user
+	fin.message = message
+	var json = JSON.stringify(fin)
+	console.log(json)
+    websocket.send(json);
+}
 
 //----------startup----------
 set_user();
 set_stranger();
+create_websocket();
 
 setTimeout(check_msg, 10000)
 //----------startup----------

@@ -1,8 +1,11 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from socketserver import ThreadingMixIn
+import asyncio
 import os
 import json
 import time
+import websockets
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
+from threading import Thread
 
 mimetypes = {
     'html': 'text/html',
@@ -12,14 +15,16 @@ mimetypes = {
 }
 
 PROGRAM_DIR = os.path.dirname(os.path.realpath(__file__))
-
 messages = {}
+websocket_connections = {}
 timeout = 15000  # timeout - same as in script.js
-
-
 SENDER_KEY = "user"
 RECIPIENT_KEY = "stranger"
 MODE_KEY = "mode"
+MESSAGE_KEY = "message"
+
+CONNECT = "CONNECT"
+DISCONNECT = "DISCONNECT"
 
 
 def milliseconds() -> int:
@@ -143,7 +148,7 @@ class RequestHandler(BaseHTTPRequestHandler):  # function for handling requests
             self.send_not_found()
 
     def send_not_found(self):
-        self.send_error(4040, 'File not found: %s' % self.path)
+        self.send_error(404, 'File not found: %s' % self.path)
 
 
 def parse_message_metadata(message):  # function for parsing nickname and stranger nickname from JSON
@@ -162,11 +167,47 @@ def get_mimetype(filename):  # function for getting mimetype
         return 'text/plain'
 
 
+async def websocket_handler(websocket):
+    sender = await websocket.recv()
+    sender = json.loads(sender)[SENDER_KEY]
+
+    print("SENDER " + sender)
+    websocket_connections[websocket] = sender
+
+    while True:
+        message = await websocket.recv()
+        _, message_content = process_websocket_message(message)
+        print("MESSAGE CONTENT " + message_content)
+        # if message is None:
+        #     their_name = websocket_connections[websocket]
+        #     del websocket_connections[websocket]
+        #     print('Client closed connection', websocket)
+        #     for client, _ in websocket_connections.items():
+        #         await client.send(their_name + ' has left the chat')
+        #     break
+
+        # Send message to all clients
+        for client, _ in websocket_connections.items():
+            print(f'Sending to {client}')
+            await client.send(message_content)
+
+
+def process_websocket_message(message) -> (str, str):
+    data = json.loads(message)
+    print(data)
+    return data[SENDER_KEY], data[MESSAGE_KEY]
+
+
+async def run_WB_server():
+    async with websockets.serve(websocket_handler, "localhost", 8080):
+        await asyncio.Future()
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 
 
-def main():
+def run_HTTP_server():
     port = 8008
     server = ThreadedHTTPServer(('', 8008), RequestHandler)
     print('Listening on localhost:%s' % port)
@@ -182,4 +223,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    Thread(target=run_HTTP_server).start()
+    Thread(target=asyncio.run(run_WB_server())).start()
