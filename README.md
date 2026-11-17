@@ -10,13 +10,16 @@ The project was written for the **Architecture, Protocols and Web Services (APUW
 
 ## Requirements
 
-- Python 3.8 or newer
+- Python 3.11.9 (pinned in `.tool-versions`; the code requires 3.8 or newer)
 - The `websockets` Python package
 
-Install the dependency with:
+Install the pinned Python version and dependencies:
 
 ```bash
-pip install websockets
+asdf install
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ## Run
